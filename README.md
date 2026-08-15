@@ -30,13 +30,14 @@ make apply
 
 | ロール | ホスト名 | IP | HW | Disk |
 |--------|----------|-----|-----|------|
-| CP | cp-01〜03 | .230/.231/.232 | Minisforum S100 (N100) | UFS /dev/sda |
+| CP | cp-13/cp-11/cp-12 | .230/.231/.232 | AOOSTAR N1 Pro (N150) | SATA M.2 (ASint AS606 512GB) |
 | Worker | wn-01 | .200 | TRIGKEY G4 (N100) | NVMe |
 | Worker | wn-02 | .201 | NiPoGi AK2Plus (N100) | SATA |
 | Worker | wn-03 | .202 | MINISFORUM UM790Pro (7940HS) | NVMe 1TB |
 
-- VIP: `192.168.0.229` (Talos built-in)
-- インストーラー: `ghcr.io/tsuguya/installer` (UFS 対応カスタムビルド)
+- VIP: `192.168.10.229` (Talos built-in, VLAN 10)
+- インストーラー: `ghcr.io/tsuguya/installer` (SecureBoot 署名済みカスタムビルド)
+- CP の NIC は `enp3s0`（I226-V ×2 のうち LAN を挿す方）。`installDisk` は固定名でなく `installDiskSelector: busPath` で SATA AHCI 配下を指定
 - CNI: Cilium（`cniConfig.name: none`、kube-proxy 無効）
 
 ## Secrets
