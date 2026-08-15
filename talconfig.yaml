@@ -1,5 +1,5 @@
 clusterName: home-cluster
-talosVersion: v1.13.0
+talosVersion: v1.13.4
 kubernetesVersion: v1.36.2
 endpoint: https://192.168.10.229:6443
 
@@ -138,30 +138,19 @@ worker:
   talosImageURL: ghcr.io/tsuguya/installer
 
 nodes:
-  # --- Control Plane Nodes (Minisforum S100, UFS, enp2s0) ---
-  - hostname: cp-01.cluster.internal
-    ipAddress: 192.168.10.230
-    controlPlane: true
-    installDisk: /dev/sda
-    networkInterfaces:
-      - interface: enp2s0
-        dhcp: false
-        addresses:
-          - 192.168.10.230/24
-        routes:
-          - network: 0.0.0.0/0
-            gateway: 192.168.10.1
-        vip:
-          ip: 192.168.10.229
-    nameservers:
-      - 192.168.10.1
-
-  - hostname: cp-02.cluster.internal
+  # --- Control Plane Nodes (Gen2: AOOSTAR/TianBei N1 Pro, N150, SATA M.2, enp3s0) ---
+  # 物理ポートは3台とも同じ側に挿すこと (挿す位置が違うと enp1s0 になる)
+  #
+  # installDisk (/dev/sda 固定) は使わない: USB メモリが刺さっていると列挙順が入れ替わり
+  # sda が USB を指すことがある (3台目で実際に発生)。SATA AHCI (0000:00:17.0) 配下を
+  # busPath で指定すれば USB を確実に除外でき、SSD 交換や ata1/ata2 の差も吸収できる。
+  - hostname: cp-11.cluster.internal
     ipAddress: 192.168.10.231
     controlPlane: true
-    installDisk: /dev/sda
+    installDiskSelector:
+      busPath: /pci0000:00/0000:00:17.0/*
     networkInterfaces:
-      - interface: enp2s0
+      - interface: enp3s0
         dhcp: false
         addresses:
           - 192.168.10.231/24
@@ -173,15 +162,34 @@ nodes:
     nameservers:
       - 192.168.10.1
 
-  - hostname: cp-03.cluster.internal
+  - hostname: cp-12.cluster.internal
     ipAddress: 192.168.10.232
     controlPlane: true
-    installDisk: /dev/sda
+    installDiskSelector:
+      busPath: /pci0000:00/0000:00:17.0/*
     networkInterfaces:
-      - interface: enp2s0
+      - interface: enp3s0
         dhcp: false
         addresses:
           - 192.168.10.232/24
+        routes:
+          - network: 0.0.0.0/0
+            gateway: 192.168.10.1
+        vip:
+          ip: 192.168.10.229
+    nameservers:
+      - 192.168.10.1
+
+  - hostname: cp-13.cluster.internal
+    ipAddress: 192.168.10.230
+    controlPlane: true
+    installDiskSelector:
+      busPath: /pci0000:00/0000:00:17.0/*
+    networkInterfaces:
+      - interface: enp3s0
+        dhcp: false
+        addresses:
+          - 192.168.10.230/24
         routes:
           - network: 0.0.0.0/0
             gateway: 192.168.10.1
