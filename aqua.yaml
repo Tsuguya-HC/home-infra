@@ -1,0 +1,25 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/aquaproj/aqua/main/json-schema/aqua-yaml.json
+#
+# CLI versions for the lint workflow. talhelper used to be installed with
+# `curl -fsSL https://i.jpillora.com/budimanjojo/talhelper! | sudo bash` — an
+# unpinned, unverified script from a third-party redirector, piped into a root
+# shell, in the job that validates the machine config for every node in the
+# cluster. aqua records a SHA256 for each binary in aqua-checksums.json and
+# refuses to install anything that does not match.
+checksum:
+  enabled: true
+  # Fail rather than fall back to "just download it" when a checksum is missing.
+  require_checksum: true
+  # CI and the workstation are both linux/amd64; recording other platforms
+  # would only pad the lock file.
+  supported_envs:
+    - linux/amd64
+
+registries:
+  - type: standard
+    ref: v4.552.0 # renovate: depName=aquaproj/aqua-registry
+
+packages:
+  - name: budimanjojo/talhelper@v3.1.16
+  - name: rhysd/actionlint@v1.7.12
