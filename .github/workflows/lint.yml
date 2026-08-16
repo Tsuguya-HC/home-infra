@@ -43,7 +43,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           allowed_bots: "renovate[bot]"
-          claude_args: "--model claude-sonnet-4-6 --max-turns 12 --disallowedTools Edit,Write,NotebookEdit,WebFetch,WebSearch,Glob,Grep --allowedTools 'Bash(gh:*)' Read"
+          claude_args: "--model claude-sonnet-5 --max-turns 12 --disallowedTools Edit,Write,NotebookEdit,WebFetch,WebSearch,Glob,Grep --allowedTools 'Bash(gh:*)' Read"
           prompt: |
             You are reviewing a Renovate PR for a Talos Linux cluster managed by talhelper. Updates here are typically:
             - Talos version (`ghcr.io/tsuguya/installer` — custom image)
