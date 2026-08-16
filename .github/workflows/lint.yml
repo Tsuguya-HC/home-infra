@@ -6,11 +6,17 @@ on:
   push:
     branches: [main]
 
+# Only ai-review and zizmor's SARIF upload need the token; they name their own
+# scopes. A new job added below starts with nothing.
+permissions: {}
+
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: ibiqlik/action-yamllint@2576378a8e339169678f9939646ee3ee325e845c # v3.1.1
         with:
@@ -22,11 +28,76 @@ jobs:
       - name: Validate talconfig
         run: talhelper validate talconfig
 
+  # Checks the workflow expressions and job graph, and shells out to shellcheck
+  # for every `run:` block. Pinned and checksummed rather than pulled from the
+  # release page's `latest`.
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install actionlint
+        env:
+          # renovate: datasource=github-releases depName=rhysd/actionlint
+          ACTIONLINT_VERSION: "1.7.12"
+        run: |
+          set -euo pipefail
+          base="https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}"
+          curl -fsSL "$base/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" -o actionlint.tar.gz
+          curl -fsSL "$base/actionlint_${ACTIONLINT_VERSION}_checksums.txt" -o checksums.txt
+          grep " actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz\$" checksums.txt | sha256sum -c -
+          sudo tar xzf actionlint.tar.gz -C /usr/local/bin actionlint
+          actionlint --version
+
+      - name: Lint workflows
+        run: |
+          set -euo pipefail
+          # actionlint silently skips its shell checks when shellcheck is
+          # absent, which would quietly reduce this job to expression linting
+          # if the runner image ever drops it.
+          command -v shellcheck >/dev/null || {
+            echo "::error::shellcheck is not on the runner; actionlint would skip every run: block"
+            exit 1
+          }
+          actionlint -no-color
+
+  # Static audit of the workflows themselves: template injection, credential
+  # persistence, permission scope, spoofable bot conditions. The action resolves
+  # the version below to a digest-pinned container, so nothing here floats.
+  zizmor:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write # upload SARIF to code scanning (free on public repos)
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: zizmorcore/zizmor-action@3dc1ecc9bcb9e94e9b2c709687979e1298497054 # v0.6.2
+        with:
+          # renovate: datasource=github-releases depName=zizmorcore/zizmor
+          version: "1.29.0"
+
   ai-review:
     needs: [lint]
+    # Matched on the PR author's numeric user id, not `github.actor`. Two
+    # reasons: `github.actor` is the actor of the triggering event rather than
+    # the author and can be made to read as a bot, and a login can be released
+    # and re-registered — neither is a safe basis for a job that approves and
+    # merges on its own. The id can be neither renamed nor reused.
+    #
+    #   29139614  renovate[bot]              — Mend-hosted, authored the older PRs
+    #   265309552 tsuguya-home-cluster[bot]  — the self-hosted Renovate GitHub App
+    #
+    # The previous `github.actor == 'renovate[bot]'` also silently stopped
+    # matching when Renovate moved to the self-hosted app, so this job had not
+    # fired on any PR since that migration.
     if: >-
       github.event_name == 'pull_request' &&
-      github.actor == 'renovate[bot]' &&
+      contains(fromJSON('[29139614, 265309552]'),
+               github.event.pull_request.user.id) &&
       !contains(github.event.pull_request.body, '**Automerge**: Enabled')
     runs-on: ubuntu-latest
     permissions:
@@ -34,7 +105,11 @@ jobs:
       pull-requests: write
       issues: write
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Claude drives `gh pr review` / `gh pr merge` from this checkout and the
+      # job uploads no artifacts, so the persisted credential never leaves the
+      # runner. Dropping it is probably still correct — it needs one live run to
+      # confirm `gh` keeps authenticating — so it stays for now.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 # zizmor: ignore[artipacked]
 
       # Pinned to v1.0.99 — v1.0.100+ has a regression where install.sh
       # silently fails and the SDK can't fall back to its bundled binary.
@@ -42,7 +117,7 @@ jobs:
       - uses: anthropics/claude-code-action@c3d45e8e941e1b2ad7b278c57482d9c5bf1f35b3 # v1.0.99
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          allowed_bots: "renovate[bot]"
+          allowed_bots: "renovate[bot],tsuguya-home-cluster[bot]"
           claude_args: "--model claude-sonnet-5 --max-turns 12 --disallowedTools Edit,Write,NotebookEdit,WebFetch,WebSearch,Glob,Grep --allowedTools 'Bash(gh:*)' Read"
           prompt: |
             You are reviewing a Renovate PR for a Talos Linux cluster managed by talhelper. Updates here are typically:
