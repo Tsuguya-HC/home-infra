@@ -139,6 +139,8 @@ jobs:
                - cgroup v2 / kernel options (BPF, Tetragon depend on these)
                - Cilium kube-proxy replacement compatibility
 
+            Before any merge, run `gh pr checks ${{ github.event.pull_request.number }}` and look for a pending `renovate/stability-days`. That check is how minimumReleaseAge is enforced, and it stays pending until the cooldown has elapsed. Nothing else stops you from merging through it: the branch ruleset does not require that check, and Renovate's own automerge gate does not apply to a merge you perform yourself. If it is pending, comment and stop — do not approve, do not merge.
+
             Decision:
             - SAFE: `gh pr review ${{ github.event.pull_request.number }} --approve -b "AI Review: <summary>"` then `gh pr merge ${{ github.event.pull_request.number }} --squash`
             - CONCERNS: `gh pr comment ${{ github.event.pull_request.number }} -b "<concerns>"` — do NOT approve. Apply such changes manually after review.
