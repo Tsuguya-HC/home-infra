@@ -1,0 +1,43 @@
+name: AI review
+
+# The entry point, and deliberately the one file on this path that never
+# changes.
+#
+# claude-code-action refuses to run when the workflow that invoked it differs
+# from the copy on the default branch — a sane rule, since a PR could otherwise
+# rewrite its own reviewer. Under `pull_request` a same-repo PR runs its own
+# head's copy, so whichever file carries the `on:` trigger cannot be edited by a
+# PR that still wants to be reviewed. While this job lived in lint.yml, that
+# meant every Renovate PR bumping a pinned action digest was unreviewable, and
+# so was any branch cut before the last edit to lint.yml.
+#
+# So: nothing that Renovate or ordinary maintenance touches may appear here.
+# Model, prompt, tool allow-list, action version and the check it waits on all
+# live in _claude-review.yml, which is read from main no matter what the PR
+# branch says.
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  ai-review:
+    # `@main` is the design, not an oversight. A SHA would have to be bumped on
+    # every change to the body, which puts this file back into Renovate's path
+    # and reintroduces the exact failure the split exists to remove.
+    uses: Tsuguya/home-infra/.github/workflows/_claude-review.yml@main # zizmor: ignore[unpinned-uses]
+    permissions:
+      contents: write # the reviewer merges the PR it approves
+      pull-requests: write # review, approve, comment
+      issues: write # PR conversation comments
+      # claude-code-action exchanges an OIDC token; without this the job fails
+      # with "Unable to get ACTIONS_ID_TOKEN_REQUEST_URL". It was missing while
+      # this job lived in lint.yml — the other repos all declare it.
+      id-token: write
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
