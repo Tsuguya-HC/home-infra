@@ -58,33 +58,51 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
+          CHECK: lint
         run: |
           set -euo pipefail
-          # `gh pr checks` exits non-zero whenever anything is pending or red,
-          # which is most of the loop — hence the `|| true` on the substitution.
+          err="${RUNNER_TEMP}/gh-pr-checks.err"
           for _ in $(seq 1 40); do
-            bucket=$(gh pr checks "$PR" --repo "$REPO" --json name,bucket \
-                       --jq '[.[] | select(.name == "lint") | .bucket] | first // ""' \
-                     2>/dev/null || true)
+            # `gh pr checks` exits non-zero whenever anything is pending or
+            # red, which is most of this loop, so the exit status cannot tell
+            # "CI is still running" apart from "gh could not reach GitHub".
+            # Decide on the output instead: a JSON array means the call worked.
+            # Folding both into one empty string is how an expired token used
+            # to burn the full 20 minutes here and then report a CI timeout.
+            checks=$(gh pr checks "$PR" --repo "$REPO" --json name,bucket 2>"$err") || true
+            if ! printf '%s' "${checks}" | jq -e 'type == "array"' >/dev/null 2>&1; then
+              if grep -q 'no checks reported' "$err"; then
+                sleep 30    # the check does not exist yet — keep waiting
+                continue
+              fi
+              echo "::error::gh pr checks failed: $(tr '\n' ' ' < "$err")"
+              exit 1
+            fi
+            # Every check reported under this name has to be green, not just
+            # whichever one the API happened to list first.
+            bucket=$(printf '%s' "${checks}" | jq -r --arg name "$CHECK" '
+              [.[] | select(.name == $name) | .bucket] as $b
+              | if ($b | length) == 0 then ""
+                elif ($b | index("pending")) then "pending"
+                elif ($b | all(. == "pass")) then "pass"
+                else ($b | join(",")) end')
             case "${bucket}" in
               pass)
                 echo "proceed=true" >> "$GITHUB_OUTPUT"
                 exit 0
                 ;;
               ""|pending)
-                # "" also covers the window before the check exists at all
                 sleep 30
                 ;;
               *)
-                echo "::notice::lint concluded '${bucket}' — nothing to review."
+                echo "::notice::${CHECK} concluded '${bucket}' — nothing to review."
                 echo "proceed=false" >> "$GITHUB_OUTPUT"
                 exit 0
                 ;;
             esac
           done
-          echo "::error::Timed out after 20 minutes waiting for the lint check."
+          echo "::error::Timed out after 20 minutes waiting for ${CHECK}."
           exit 1
-
       # No credential is left behind, and claude-code-action does not want one.
       # Passing a prompt selects its agent mode, where configureGitAuth() runs
       # first and explicitly unsets the http.<server>/.extraheader that
