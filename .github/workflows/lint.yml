@@ -15,8 +15,15 @@ on:
 # unreviewable.
 permissions: {}
 
+concurrency:
+  # PR は最新の push だけ残す。push / dispatch は SHA ごとに別グループにして
+  # 互いをキャンセルさせない（タグ push のリリースビルドを後続が消さないため）。
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name == 'pull_request' && github.event.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   lint:
+    name: lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -39,6 +46,6 @@ jobs:
   # ワークフローの lint は 6 リポジトリ共通なので home-actions に寄せてある。
   # ツールのピンは向こう側にあり、ここは呼び先の SHA を追うだけ。
   lint-workflows:
-    uses: Tsuguya/home-actions/.github/workflows/lint-workflows.yml@86d1f1b663cdfcb599170c1b3a7f84b6c1e2fe00 # v0
+    uses: Tsuguya/home-actions/.github/workflows/lint-workflows.yml@567faff4ba360c1d0f4d852460172f8e2071f5b6 # v0
     permissions:
       contents: read

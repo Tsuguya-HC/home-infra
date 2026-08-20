@@ -38,6 +38,6 @@ jobs:
       # claude-code-action exchanges an OIDC token; without this the job fails
       # with "Unable to get ACTIONS_ID_TOKEN_REQUEST_URL". It was missing while
       # this job lived in lint.yml — the other repos all declare it.
-      id-token: write
+      id-token: write # claude-code-action の OIDC 認証
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

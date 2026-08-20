@@ -43,10 +43,10 @@ jobs:
     # from holding a runner for the default six hours on top of that.
     timeout-minutes: 40
     permissions:
-      contents: write
-      pull-requests: write
-      issues: write
-      id-token: write
+      contents: write # gh pr merge --squash でマージするため
+      pull-requests: write # gh pr review --approve で承認するため
+      issues: write # gh pr comment（PR コメントは issues API 経由）
+      id-token: write # claude-code-action の OIDC 認証
     steps:
       # Stands in for the `needs: [lint]` this job had while it lived in
       # lint.yml. A separate workflow cannot depend on another one's jobs, and
