@@ -6,8 +6,13 @@ on:
   push:
     branches: [main]
 
-# Only ai-review and zizmor's SARIF upload need the token; they name their own
-# scopes. A new job added below starts with nothing.
+# Only zizmor's SARIF upload needs the token; it names its own scope. A new job
+# added below starts with nothing.
+#
+# The Claude reviewer used to live in this file. It now sits in
+# claude-review.yml, because claude-code-action validates its entry-point
+# workflow against main and a PR that edits this file would otherwise be
+# unreviewable.
 permissions: {}
 
 jobs:
@@ -70,77 +75,3 @@ jobs:
         with:
           # renovate: datasource=github-releases depName=zizmorcore/zizmor
           version: "1.29.0"
-
-  ai-review:
-    needs: [lint]
-    # Matched on the PR author's numeric user id, not `github.actor`. Two
-    # reasons: `github.actor` is the actor of the triggering event rather than
-    # the author and can be made to read as a bot, and a login can be released
-    # and re-registered — neither is a safe basis for a job that approves and
-    # merges on its own. The id can be neither renamed nor reused.
-    #
-    #   29139614  renovate[bot]              — Mend-hosted, authored the older PRs
-    #   265309552 tsuguya-home-cluster[bot]  — the self-hosted Renovate GitHub App
-    #
-    # The previous `github.actor == 'renovate[bot]'` also silently stopped
-    # matching when Renovate moved to the self-hosted app, so this job had not
-    # fired on any PR since that migration.
-    if: >-
-      github.event_name == 'pull_request' &&
-      contains(fromJSON('[29139614, 265309552]'),
-               github.event.pull_request.user.id) &&
-      !contains(github.event.pull_request.body, '**Automerge**: Enabled')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-      issues: write
-    steps:
-      # No credential is left behind, and claude-code-action does not want one.
-      # Passing a prompt selects its agent mode, where configureGitAuth() runs
-      # first and explicitly unsets the http.<server>/.extraheader that
-      # actions/checkout installs, then puts its own token in the remote URL.
-      #
-      # Restore this if the job is ever switched to tag mode (the @claude
-      # mention flow): there setupBranch() runs `git fetch` at modes/tag/index.ts
-      # before the auth is configured, so it would fetch with no credential.
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      # Pinned to v1.0.99 — v1.0.100+ has a regression where install.sh
-      # silently fails and the SDK can't fall back to its bundled binary.
-      # Unpin once anthropics/claude-code-action#1260 lands.
-      - uses: anthropics/claude-code-action@c3d45e8e941e1b2ad7b278c57482d9c5bf1f35b3 # v1.0.99
-        with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          allowed_bots: "renovate[bot],tsuguya-home-cluster[bot]"
-          claude_args: "--model claude-sonnet-5 --max-turns 12 --disallowedTools Edit,Write,NotebookEdit,WebFetch,WebSearch,Glob,Grep --allowedTools 'Bash(gh:*)' Read"
-          prompt: |
-            You are reviewing a Renovate PR for a Talos Linux cluster managed by talhelper. Updates here are typically:
-            - Talos version (`ghcr.io/tsuguya/installer` — custom image)
-            - Kubernetes version (`kubernetesVersion`)
-            - System extensions referenced in talconfig.yaml
-
-            Patch updates auto-merge without this review (renovate.json packageRules). This review fires for minor/major bumps.
-
-            PR: #${{ github.event.pull_request.number }}
-
-            Workflow:
-            1. `gh pr view ${{ github.event.pull_request.number }}` — title + body (Renovate writes release notes here)
-            2. `gh pr diff ${{ github.event.pull_request.number }}`
-            3. Read `talconfig.yaml` to see how the bumped component is used (machine config, extensions, kubelet args, etc.)
-            4. Check release notes:
-               - Talos: `gh api repos/siderolabs/talos/releases/tags/<version>` — look for breaking changes, deprecated machine config fields, kernel/cgroup changes affecting our setup (Cilium, Tetragon, SecureBoot, TPM disk encryption, Kata)
-               - Kubernetes: `gh api repos/kubernetes/kubernetes/releases/tags/<version>` — API removals, PodSecurity changes, kubelet flags
-            5. Pay special attention to:
-               - SecureBoot / lockdown=integrity compatibility
-               - LUKS2 / TPM disk encryption changes
-               - cgroup v2 / kernel options (BPF, Tetragon depend on these)
-               - Cilium kube-proxy replacement compatibility
-
-            Before any merge, run `gh pr checks ${{ github.event.pull_request.number }}` and look for a pending `renovate/stability-days`. That check is how minimumReleaseAge is enforced, and it stays pending until the cooldown has elapsed. Nothing else stops you from merging through it: the branch ruleset does not require that check, and Renovate's own automerge gate does not apply to a merge you perform yourself. If it is pending, comment and stop — do not approve, do not merge.
-
-            Decision:
-            - SAFE: `gh pr review ${{ github.event.pull_request.number }} --approve -b "AI Review: <summary>"` then `gh pr merge ${{ github.event.pull_request.number }} --squash`
-            - CONCERNS: `gh pr comment ${{ github.event.pull_request.number }} -b "<concerns>"` — do NOT approve. Apply such changes manually after review.
