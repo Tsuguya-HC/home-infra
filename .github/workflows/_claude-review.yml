@@ -134,7 +134,7 @@ jobs:
             - Kubernetes version (`kubernetesVersion`)
             - System extensions referenced in talconfig.yaml
 
-            Patch updates auto-merge without this review (renovate.json packageRules). This review fires for minor/major bumps.
+            Patch updates auto-merge without this review (renovate.jsonc packageRules). This review fires for minor/major bumps.
 
             PR: #${{ github.event.pull_request.number }}
 

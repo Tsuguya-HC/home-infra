@@ -1,25 +1,36 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+
+  // The aqua preset is pinned rather than floating: it owns which files the aqua
+  // manager reads, and a preset-side change would silently re-scope this repo.
   "extends": [
     "config:recommended",
     "helpers:pinGitHubActionDigests",
     "github>aquaproj/aqua-renovate-config#2.13.0"
   ],
+
+  // Baseline soak. Nothing here reaches the cluster without `make apply`, but a
+  // Talos or Kubernetes bump is a node reboot, so it soaks like everything else.
   "minimumReleaseAge": "3 days",
+
   "customManagers": [
     {
+      // talhelper's own keys — no manager reads talconfig.yaml, so both the Talos
+      // and Kubernetes versions would be unmaintained pins without these two.
       "customType": "regex",
-      "fileMatch": ["talconfig\\.yaml$"],
+      "managerFilePatterns": ["/talconfig\\.yaml$/"],
       "matchStrings": [
         "talosVersion:\\s*(?<currentValue>v[\\d.]+)"
       ],
+      // Tracked through our own installer image, which is the custom Talos build
+      // this repo actually boots — not the upstream siderolabs release.
       "depNameTemplate": "ghcr.io/tsuguya/installer",
       "datasourceTemplate": "docker",
       "versioningTemplate": "semver"
     },
     {
       "customType": "regex",
-      "fileMatch": ["talconfig\\.yaml$"],
+      "managerFilePatterns": ["/talconfig\\.yaml$/"],
       "matchStrings": [
         "kubernetesVersion:\\s*(?<currentValue>v[\\d.]+)"
       ],
@@ -28,7 +39,12 @@
       "versioningTemplate": "semver"
     },
     {
-      "description": "zizmor's version input, pinned so the action resolves a digest-pinned container instead of `latest`. Every other CLI in the workflows comes from aqua.yaml now, which the aqua preset handles. extractVersionTemplate drops the tag's leading v to match how the version is written in the file.",
+      "description": [
+        "zizmor's version input, pinned so the action resolves a digest-pinned",
+        "container instead of `latest`. Every other CLI in the workflows comes from",
+        "aqua.yaml now, which the aqua preset handles. extractVersionTemplate drops",
+        "the tag's leading v to match how the version is written in the file."
+      ],
       "customType": "regex",
       "managerFilePatterns": ["/^\\.github/workflows/.+\\.ya?ml$/"],
       "matchStrings": [
@@ -37,8 +53,11 @@
       "extractVersionTemplate": "^v(?<version>.+)$"
     }
   ],
+
   "packageRules": [
     {
+      // Talos patch releases are bug fixes within a minor; the reboot still only
+      // happens when a human runs `make apply`.
       "matchPackageNames": ["ghcr.io/tsuguya/installer"],
       "matchUpdateTypes": ["patch"],
       "automerge": true
@@ -55,7 +74,13 @@
       "allowedVersions": "<=1.0.99"
     },
     {
-      "description": "Leave the reusable-workflow ref in claude-review.yml alone. It points at @main deliberately: claude-code-action validates its entry-point workflow against the default branch, so any PR that edits that caller cannot be reviewed. Pinning it to a SHA would put it back in this bot's path on every change to the reusable body — exactly the failure the split removes.",
+      "description": [
+        "Leave the reusable-workflow ref in claude-review.yml alone. It points at",
+        "@main deliberately: claude-code-action validates its entry-point workflow",
+        "against the default branch, so any PR that edits that caller cannot be",
+        "reviewed. Pinning it to a SHA would put it back in this bot's path on every",
+        "change to the reusable body — exactly the failure the split removes."
+      ],
       "matchManagers": ["github-actions"],
       "matchDepNames": ["Tsuguya/home-infra"],
       "enabled": false
