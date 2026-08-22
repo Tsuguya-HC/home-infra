@@ -66,3 +66,35 @@ jobs:
     uses: Tsuguya/home-actions/.github/workflows/lint-aqua.yml@10834ead7a2c2ca71677a6b818cd066d329eacbb # v1.2.0
     permissions:
       contents: read
+
+  # 必須チェックはこれ 1 個だけを ruleset に登録する。個別ジョブ名を必須化すると、
+  # 名前を変えたり増減させた瞬間に、報告されない必須コンテキストが残って PR が
+  # "Waiting for status to be reported" で永久に止まる。
+  gate:
+    name: CI Gate
+    needs: [lint, lint-workflows, lint-renovate, lint-aqua]
+    # `always()` ではなく `!cancelled()`。always() だと run をキャンセルしたとき
+    # 全ての leaf が `cancelled` を返し、下の case をすり抜けて必須チェックが
+    # 失敗として記録される。キャンセルされた run に下すべき判定は無い。
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Aggregate results
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          set -euo pipefail
+          echo "Results: ${RESULTS}"
+          # fail-closed: needs が空だとループが素通りして緑になる
+          if [ -z "${RESULTS// /}" ]; then
+            echo "::error::No job results to aggregate (empty needs) — failing closed."
+            exit 1
+          fi
+          for r in ${RESULTS}; do
+            case "${r}" in
+              success|skipped) ;;
+              *) echo "::error::A required job concluded with: ${r}"; exit 1 ;;
+            esac
+          done
