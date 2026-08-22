@@ -22,4 +22,3 @@ registries:
 
 packages:
   - name: budimanjojo/talhelper@v3.1.16
-  - name: rhysd/actionlint@v1.7.12
