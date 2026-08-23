@@ -1,10 +1,28 @@
 name: Lint
 
+# 必須ステータスチェックを単一 gate に集約するオーケストレーター。
+# 各検査は workflow_call の leaf にあり、ここはそれを組み立てるだけ。
+# ruleset に登録する必須チェックは末尾の `CI Gate` 1 個。
+#
+# トリガーに paths フィルタは付けない。leaf をトリガー側で絞ると、該当しない
+# PR ではチェックが報告されず、必須化された context が
+# "Expected — Waiting for status to be reported" のまま永久にブロックする。
+# home-rss はそれを踏んで workflows → renovate 設定と 2 度リストを継ぎ足した
+# 末に、README だけの変更でまた止まった。
+#
+# 代わりに起動は常にして、`detect` が leaf ごとの実行要否を出す。skip した
+# leaf は gate から見て `skipped` = 合格扱いになるので、報告は常に発生する。
+#
+# push トリガーは持たない。main は ruleset で直 push を禁じており PR 経由で
+# しか更新されない（= マージ時点で CI Gate 通過済み）ため push CI は冗長。
 on:
   pull_request:
     branches: [main]
-  push:
-    branches: [main]
+    # `edited` on top of the default opened/synchronize/reopened. retarget では
+    # head SHA が変わらないので、これが無いと旧 base で計算した detect の結果
+    # （= leaf を skip した緑）がそのまま新 base の必須チェックに流用できる。
+    # leaf の実行要否を base 差分で決める以上、これは fail-open になる。
+    types: [opened, synchronize, reopened, edited]
 
 # Only zizmor's SARIF upload needs the token; it names its own scope. A new job
 # added below starts with nothing.
@@ -16,36 +34,70 @@ on:
 permissions: {}
 
 concurrency:
-  # PR は最新の push だけ残す。push / dispatch は SHA ごとに別グループにして
-  # 互いをキャンセルさせない（タグ push のリリースビルドを後続が消さないため）。
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name == 'pull_request' && github.event.number || github.sha }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.event.number }}
+  cancel-in-progress: true
 
 jobs:
-  lint:
-    name: lint
+  # 変更ファイル種別を判定し、各 leaf を実行すべきかを outputs で返す。
+  # merge-base 等のエッジケースを正しく扱うため dorny/paths-filter を使う。
+  #
+  # aqua.yaml / aqua-checksums.json は lint-aqua だけの入力ではない。talhelper は
+  # そこでピンされているので、ピンが動いたら talconfig の検証も走らせる。
+  #
+  # leaf 自身のワークフローファイルも各フィルタに入れてある（自己参照）。leaf の
+  # 中身を変えた PR がその leaf を走らせないのでは検証にならない。
+  detect:
+    name: detect changes
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read # dorny/paths-filter が PR の変更ファイル一覧を API 取得するために必要
+    outputs:
+      talconfig: ${{ steps.filter.outputs.talconfig }}
+      workflows: ${{ steps.filter.outputs.workflows }}
+      renovate: ${{ steps.filter.outputs.renovate }}
+      aqua: ${{ steps.filter.outputs.aqua }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - uses: ibiqlik/action-yamllint@2576378a8e339169678f9939646ee3ee325e845c # v3.1.1
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
         with:
-          file_or_dir: talconfig.yaml
+          filters: |
+            talconfig:
+              - 'talconfig.yaml'
+              - 'talsecret.sops.yaml'
+              - '.yamllint*'
+              - '.github/workflows/_talconfig.yml'
+              - 'aqua.yaml'
+              - 'aqua-checksums.json'
+            workflows:
+              - '.github/workflows/**'
+              - '.github/zizmor.yml'
+            renovate:
+              - 'renovate.json*'
+            aqua:
+              - 'aqua.yaml'
+              - 'aqua-checksums.json'
+              - 'aqua/**'
 
-      - uses: aquaproj/aqua-installer@96a9bc20066c5bf5e275b41019cfc165b25f4e2e # v4.0.5
-        with:
-          aqua_version: v2.62.3
-
-      - name: Validate talconfig
-        run: talhelper validate talconfig
+  talconfig:
+    needs: detect
+    if: ${{ needs.detect.outputs.talconfig == 'true' }}
+    uses: ./.github/workflows/_talconfig.yml
+    permissions:
+      contents: read
 
   # Checks the workflow expressions and job graph, and shells out to shellcheck
   # for every `run:` block.
   # ワークフローの lint は 6 リポジトリ共通なので home-actions に寄せてある。
   # ツールのピンは向こう側にあり、ここは呼び先の SHA を追うだけ。
   lint-workflows:
+    needs: detect
+    if: ${{ needs.detect.outputs.workflows == 'true' }}
     uses: Tsuguya/home-actions/.github/workflows/lint-workflows.yml@10834ead7a2c2ca71677a6b818cd066d329eacbb # v1.2.0
     permissions:
       contents: read
@@ -54,6 +106,8 @@ jobs:
   # 出ない）、バリデータだけがこの層の間違いを検出できる。home-cluster は
   # `ignoredAuthors` の綴り違いを 5 週間放置していた。
   lint-renovate:
+    needs: detect
+    if: ${{ needs.detect.outputs.renovate == 'true' }}
     uses: Tsuguya/home-actions/.github/workflows/lint-renovate.yml@10834ead7a2c2ca71677a6b818cd066d329eacbb # v1.2.0
     permissions:
       contents: read
@@ -63,6 +117,8 @@ jobs:
   # 実インストール後の git 差分で見る。直すのはクラスタ側の aqua-checksum
   # ワークフローで、こちらはそれが直せていないことを赤にする側。
   lint-aqua:
+    needs: detect
+    if: ${{ needs.detect.outputs.aqua == 'true' }}
     uses: Tsuguya/home-actions/.github/workflows/lint-aqua.yml@10834ead7a2c2ca71677a6b818cd066d329eacbb # v1.2.0
     permissions:
       contents: read
@@ -70,9 +126,13 @@ jobs:
   # 必須チェックはこれ 1 個だけを ruleset に登録する。個別ジョブ名を必須化すると、
   # 名前を変えたり増減させた瞬間に、報告されない必須コンテキストが残って PR が
   # "Waiting for status to be reported" で永久に止まる。
+  #
+  # `detect` も needs に含める。detect が失敗すると全 leaf の `if` が偽になって
+  # skip され、skip は合格扱いなので、detect を見ていないと「何も検査していない
+  # 緑」が必須チェックを満たしてしまう。
   gate:
     name: CI Gate
-    needs: [lint, lint-workflows, lint-renovate, lint-aqua]
+    needs: [detect, talconfig, lint-workflows, lint-renovate, lint-aqua]
     # `always()` ではなく `!cancelled()`。always() だと run をキャンセルしたとき
     # 全ての leaf が `cancelled` を返し、下の case をすり抜けて必須チェックが
     # 失敗として記録される。キャンセルされた run に下すべき判定は無い。
@@ -98,3 +158,4 @@ jobs:
               *) echo "::error::A required job concluded with: ${r}"; exit 1 ;;
             esac
           done
+          echo "All required jobs passed or were correctly skipped."
