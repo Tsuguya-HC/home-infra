@@ -136,6 +136,16 @@ controlPlane:
 
 worker:
   talosImageURL: ghcr.io/tsuguya/installer
+  patches:
+    - |-
+      machine:
+        nodeLabels:
+          # RuntimeClass `kata` の nodeSelector が要求するラベル。Kata 拡張は全ノードに
+          # 入っているが、2026-03 に wn-03 だけへ kubectl label で手付けしたまま管理外
+          # だったため、Kata Pod（image-build、taskflow のエージェント）は wn-03 固定に
+          # なっていた。wn-03 が LLM バッチで飽和すると逃げ先が無い（2026-08-25 実測）。
+          # 全 worker に付けて anti-affinity の逃げ先を作り、ラベルを Talos 管理下に戻す。
+          kata-containers: "true"
 
 nodes:
   # --- Control Plane Nodes (Gen2: AOOSTAR/TianBei N1 Pro, N150, SATA M.2, enp3s0) ---
