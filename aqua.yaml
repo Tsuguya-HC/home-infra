@@ -21,4 +21,4 @@ registries:
     ref: v4.554.0 # renovate: depName=aquaproj/aqua-registry
 
 packages:
-  - name: budimanjojo/talhelper@v3.1.16
+  - name: budimanjojo/talhelper@v3.1.17
