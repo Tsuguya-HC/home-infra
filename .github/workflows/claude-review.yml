@@ -30,7 +30,7 @@ jobs:
     # `@main` is the design, not an oversight. A SHA would have to be bumped on
     # every change to the body, which puts this file back into Renovate's path
     # and reintroduces the exact failure the split exists to remove.
-    uses: Tsuguya/home-infra/.github/workflows/_claude-review.yml@main # zizmor: ignore[unpinned-uses]
+    uses: Tsuguya-HC/home-infra/.github/workflows/_claude-review.yml@main # zizmor: ignore[unpinned-uses]
     permissions:
       contents: write # the reviewer merges the PR it approves
       pull-requests: write # review, approve, comment
