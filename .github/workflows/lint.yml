@@ -30,11 +30,6 @@ on:
 
 # Only zizmor's SARIF upload needs the token; it names its own scope. A new job
 # added below starts with nothing.
-#
-# The Claude reviewer used to live in this file. It now sits in
-# claude-review.yml, because claude-code-action validates its entry-point
-# workflow against main and a PR that edits this file would otherwise be
-# unreviewable.
 permissions: {}
 
 concurrency:

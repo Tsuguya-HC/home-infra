@@ -108,24 +108,6 @@
       "matchPackageNames": ["kubernetes/kubernetes"],
       "matchUpdateTypes": ["patch"],
       "automerge": true
-    },
-    {
-      "description": "Pin claude-code-action until anthropics/claude-code-action#1260 lands (Issue #1242)",
-      "matchManagers": ["github-actions"],
-      "matchDepNames": ["anthropics/claude-code-action"],
-      "allowedVersions": "<=1.0.99"
-    },
-    {
-      "description": [
-        "Leave the reusable-workflow ref in claude-review.yml alone. It points at",
-        "@main deliberately: claude-code-action validates its entry-point workflow",
-        "against the default branch, so any PR that edits that caller cannot be",
-        "reviewed. Pinning it to a SHA would put it back in this bot's path on every",
-        "change to the reusable body — exactly the failure the split removes."
-      ],
-      "matchManagers": ["github-actions"],
-      "matchDepNames": ["Tsuguya-HC/home-infra"],
-      "enabled": false
     }
   ]
 }
