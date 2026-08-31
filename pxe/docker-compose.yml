@@ -1,6 +1,6 @@
 services:
   dnsmasq:
-    image: alpine:3
+    image: alpine:3@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
     command: ["sh", "-c", "apk add --no-cache dnsmasq && dnsmasq -d -C /etc/dnsmasq.conf"]
     network_mode: host
     cap_add:
@@ -14,7 +14,7 @@ services:
     restart: unless-stopped
 
   nginx:
-    image: nginx:alpine
+    image: nginx:alpine@sha256:db35bfc6b2951e7f8a72db5db120288c127ffaeeb4a6d4b95a26fead017d5913
     ports:
       - "8888:80"
     volumes:
@@ -25,7 +25,7 @@ services:
     restart: unless-stopped
 
   ipxe-copy:
-    image: alpine:3
+    image: alpine:3@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
     command: ["cp", "/src/snponly.efi", "/tftpboot/snponly.efi"]
     volumes:
       - ./snponly.efi:/src/snponly.efi:ro
