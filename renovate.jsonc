@@ -66,6 +66,18 @@
   "packageRules": [
     {
       "description": [
+        "The regex-managed deps live in lines that have nowhere to hold a digest",
+        "(talconfig's `talosVersion: vX.Y.Z` feeds talhelper, which takes a bare",
+        "version). docker:pinDigests still proposes a pinDigest update for them,",
+        "the write fails, and the grouped renovate/pin-dependencies branch dies",
+        "with `Error updating branch: update failure`, taking the docker-compose",
+        "pins down with it."
+      ],
+      "matchManagers": ["custom.regex"],
+      "pinDigests": false
+    },
+    {
+      "description": [
         "First-party code does not soak. minimumReleaseAge buys time for someone",
         "else to notice a poisoned release before we take it; there is no someone",
         "else here — we wrote it, reviewed it and merged it. Waiting three days on",
