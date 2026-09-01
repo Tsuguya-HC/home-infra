@@ -18,7 +18,7 @@ checksum:
 
 registries:
   - type: standard
-    ref: v4.556.0 # renovate: depName=aquaproj/aqua-registry
+    ref: v4.557.0 # renovate: depName=aquaproj/aqua-registry
 
 packages:
   - name: budimanjojo/talhelper@v3.1.17
