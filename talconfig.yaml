@@ -62,7 +62,7 @@ patches:
           tpm: {}
 
 controlPlane:
-  talosImageURL: ghcr.io/tsuguya/installer
+  talosImageURL: ghcr.io/tsuguya-hc/installer
   patches:
     - |-
       machine:
@@ -135,7 +135,7 @@ controlPlane:
             listen-metrics-urls: http://0.0.0.0:2381
 
 worker:
-  talosImageURL: ghcr.io/tsuguya/installer
+  talosImageURL: ghcr.io/tsuguya-hc/installer
   patches:
     - |-
       machine:
