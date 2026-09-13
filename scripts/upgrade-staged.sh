@@ -8,7 +8,7 @@ cd "$(dirname "$0")/.."
 
 TALOSCONFIG="${TALOSCONFIG:-./clusterconfig/talosconfig}"
 TALOS_VERSION="$(awk '/^talosVersion:/ {print $2}' talconfig.yaml)"
-INSTALLER_IMAGE="${INSTALLER_IMAGE:-ghcr.io/tsuguya/installer:${TALOS_VERSION}}"
+INSTALLER_IMAGE="${INSTALLER_IMAGE:-ghcr.io/tsuguya-hc/installer:${TALOS_VERSION}}"
 
 echo "Image: $INSTALLER_IMAGE"
 echo "Talosconfig: $TALOSCONFIG"

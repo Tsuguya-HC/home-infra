@@ -36,7 +36,7 @@ make apply
 | Worker | wn-03 | .202 | MINISFORUM UM790Pro (7940HS) | NVMe 1TB |
 
 - VIP: `192.168.10.229` (Talos built-in, VLAN 10)
-- インストーラー: `ghcr.io/tsuguya/installer` (SecureBoot 署名済みカスタムビルド)
+- インストーラー: `ghcr.io/tsuguya-hc/installer` (SecureBoot 署名済みカスタムビルド)
 - CP の NIC は `enp3s0`（I226-V ×2 のうち LAN を挿す方）。`installDisk` は固定名でなく `installDiskSelector: busPath` で SATA AHCI 配下を指定
 - CNI: Cilium（`cniConfig.name: none`、kube-proxy 無効）
 

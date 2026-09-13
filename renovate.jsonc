@@ -33,7 +33,7 @@
       ],
       // Tracked through our own installer image, which is the custom Talos build
       // this repo actually boots — not the upstream siderolabs release.
-      "depNameTemplate": "ghcr.io/tsuguya/installer",
+      "depNameTemplate": "ghcr.io/tsuguya-hc/installer",
       "datasourceTemplate": "docker",
       "versioningTemplate": "semver"
     },
@@ -100,7 +100,7 @@
     {
       // Talos patch releases are bug fixes within a minor; the reboot still only
       // happens when a human runs `make apply`.
-      "matchPackageNames": ["ghcr.io/tsuguya/installer"],
+      "matchPackageNames": ["ghcr.io/tsuguya-hc/installer"],
       "matchUpdateTypes": ["patch"],
       "automerge": true
     },
