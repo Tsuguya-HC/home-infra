@@ -1,14 +1,19 @@
 #!/usr/bin/env bash
 # Replace secrets that live only in the bundle (not rotated by talosctl rotate-ca): generate
-# a fresh bundle, splice the requested keys into the current one, store it in 1Password and
-# apply the re-rendered machine configs to every node. Talos picks these up without a reboot.
+# a fresh bundle, splice the requested keys into the current one, store it in 1Password,
+# stage the re-rendered machine configs on every node and reboot the nodes one at a time.
 #
 #   rotate-bundle.sh trustdinfo.token secrets.bootstraptoken cluster.id cluster.secret \
 #                    certs.k8saggregator certs.k8sserviceaccount
 #
+# Talos cannot apply a `machine.token` change without a reboot, and `apply-config` in its
+# default mode reboots the node by itself. Applying that to six nodes in a loop rebooted
+# the whole cluster at once (2026-09-13), so this script always stages (`--mode=staged`)
+# and then reboots control planes first, one node at a time, waiting for Ready.
+#
 # What each one costs (Talos 1.13, no staged rotation for these):
 #   trustdinfo.token / secrets.bootstraptoken   nothing running notices; new nodes use the new
-#                                               token
+#                                               token (reboot needed to apply)
 #   cluster.id / cluster.secret                 discovery re-registers, `talosctl get members`
 #                                               is incomplete for up to 30 min
 #   certs.k8saggregator                         kube-apiserver restarts; aggregated APIs
@@ -18,6 +23,9 @@
 #   secrets.secretboxencryptionsecret           refused: Talos 1.13 writes a single key, so
 #                                               existing Secrets could not be decrypted. Needs
 #                                               the 1.14 KubeEtcdEncryptionConfig two-step
+#
+# talosctl prints the config diff (secrets included) on stderr when it applies. Nothing
+# from talosctl reaches the terminal except a short allowlist of status lines.
 set -euo pipefail
 umask 077
 cd "$(dirname "$0")/.."
@@ -52,8 +60,26 @@ bundle_diff "$tmp/current.yaml" "$tmp/next.yaml" | grep DIFF || true
 op document edit "$BUNDLE_ITEM" "$tmp/next.yaml" --vault "$BUNDLE_VAULT" --file-name secrets.yaml > /dev/null
 echo "1Password document updated"
 
-make -s genconfig
-bash scripts/apply.sh | safe_lines
+make -s genconfig > /dev/null 2>&1
+echo "machine configs rendered"
+
+# Only these lines of talosctl's output are shown; everything else (the diff) is dropped.
+status_lines() { grep -E '^(Applied configuration|No changes|.*error)' || true; }
+
+for ip in $(yq -r '.nodes[] | select(.role == "controlplane") | .ip' nodes.yaml) \
+          $(yq -r '.nodes[] | select(.role == "worker") | .ip' nodes.yaml); do
+  host=$(yq -r ".nodes[] | select(.ip == \"$ip\") | .host" nodes.yaml)
+  node=${host%%.*}
+  echo "===> $host ($ip)"
+  echo "  staging..."
+  talosctl -n "$ip" apply-config --mode=staged -f "clusterconfig/$host.yaml" 2>&1 | status_lines | sed 's/^/  /'
+  echo "  rebooting..."
+  talosctl -n "$ip" reboot > /dev/null 2>&1
+  sleep 20
+  kubectl wait --for=condition=Ready "node/$node" --timeout=10m > /dev/null
+  for _ in $(seq 1 30); do talosctl -n "$ip" version --short > /dev/null 2>&1 && break; sleep 5; done
+  echo "  Ready"
+done
 
 case " $* " in
   *" certs.k8sserviceaccount "*)
