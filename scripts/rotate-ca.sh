@@ -54,15 +54,15 @@ safe_lines < "$tmp/log"
 if [ "$which" = talos ] && [ -s "$tmp/talosconfig" ]; then
   IFS=, read -r -a cps <<< "$(cp_ips)"
   IFS=, read -r -a wks <<< "$(worker_ips)"
-  ctx=$(yq -r '.context' "$tmp/talosconfig")
-  # merge renames an incoming context that already exists ("home-cluster-1"), so drop the
-  # old one first; the old CA is gone from the nodes anyway.
-  talosctl config remove "$ctx" -y > /dev/null 2>&1 || true
-  talosctl config merge "$tmp/talosconfig" > /dev/null
-  talosctl config context "$ctx" > /dev/null
+  # Replace ~/.talos/config outright. `talosctl config merge` keeps the old context and
+  # renames the new one ("home-cluster-1"), which left the CLI on the dead CA twice; this
+  # file only ever holds this one cluster.
+  mkdir -p ~/.talos
+  cp "$tmp/talosconfig" ~/.talos/config
+  chmod 600 ~/.talos/config
   talosctl config endpoint "${cps[@]}" > /dev/null
   talosctl config node "${cps[@]}" "${wks[@]}" > /dev/null
-  echo "talosconfig installed locally (context $ctx)"
+  echo "talosconfig installed locally (context $(yq -r '.context' ~/.talos/config))"
 fi
 
 if [ "$rc" -ne 0 ]; then

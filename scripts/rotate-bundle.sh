@@ -63,23 +63,7 @@ echo "1Password document updated"
 make -s genconfig > /dev/null 2>&1
 echo "machine configs rendered"
 
-# Only these lines of talosctl's output are shown; everything else (the diff) is dropped.
-status_lines() { grep -E '^(Applied configuration|No changes|.*error)' || true; }
-
-for ip in $(yq -r '.nodes[] | select(.role == "controlplane") | .ip' nodes.yaml) \
-          $(yq -r '.nodes[] | select(.role == "worker") | .ip' nodes.yaml); do
-  host=$(yq -r ".nodes[] | select(.ip == \"$ip\") | .host" nodes.yaml)
-  node=${host%%.*}
-  echo "===> $host ($ip)"
-  echo "  staging..."
-  talosctl -n "$ip" apply-config --mode=staged -f "clusterconfig/$host.yaml" 2>&1 | status_lines | sed 's/^/  /'
-  echo "  rebooting..."
-  talosctl -n "$ip" reboot > /dev/null 2>&1
-  sleep 20
-  kubectl wait --for=condition=Ready "node/$node" --timeout=10m > /dev/null
-  for _ in $(seq 1 30); do talosctl -n "$ip" version --short > /dev/null 2>&1 && break; sleep 5; done
-  echo "  Ready"
-done
+bash scripts/apply-staged.sh
 
 case " $* " in
   *" certs.k8sserviceaccount "*)
