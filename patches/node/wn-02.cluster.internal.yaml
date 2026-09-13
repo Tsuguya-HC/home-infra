@@ -1,24 +1,20 @@
 # NiPoGi AK2Plus (N100), SATA, enp1s0
-machine:
-  install:
-    disk: /dev/sda
-  files:
-    - content: ""
-      path: /var/mnt/kanidm/.keep
-      op: create
-      permissions: 0o644
+#
+# /var/mnt/kanidm backs the kanidm local PersistentVolume (home-cluster
+# manifests/storage/local-storage.yaml). The talhelper-era config created it with
+# `.machine.files`, which has no 1.14 document for paths outside /etc; the directory
+# exists on the node and survives reboots. After a reinstall, recreate it as part of
+# restoring kanidm's data.
+apiVersion: v1alpha1
+kind: UnattendedInstallConfig
+provisioning:
+  diskSelector:
+    match: disk.dev_path == "/dev/sda"
 ---
 apiVersion: v1alpha1
 kind: HostnameConfig
 auto: 'off'
 hostname: wn-02.cluster.internal
----
-apiVersion: v1alpha1
-kind: ResolverConfig
-nameservers:
-  - address: 192.168.10.1
-searchDomains:
-  disableDefault: false
 ---
 apiVersion: v1alpha1
 kind: LinkConfig

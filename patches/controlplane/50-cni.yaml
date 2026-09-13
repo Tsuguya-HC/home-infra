@@ -1,0 +1,9 @@
+# Cilium (installed by ArgoCD, home-cluster) replaces both kube-proxy and the CNI. Both
+# documents are control-plane only in Talos 1.14, hence not under patches/all.
+apiVersion: v1alpha1
+kind: KubeProxyConfig
+enabled: false
+---
+apiVersion: v1alpha1
+kind: KubeFlannelCNIConfig
+$patch: delete

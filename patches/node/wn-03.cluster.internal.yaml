@@ -1,24 +1,17 @@
 # MINISFORUM UM790Pro (7940HS), NVMe 1TB, enp1s0
-machine:
-  install:
-    disk: /dev/nvme0n1
-  files:
-    - content: ""
-      path: /var/mnt/kanidm/.keep
-      op: create
-      permissions: 0o644
+#
+# /var/mnt/kanidm backs the kanidm local PersistentVolume; see wn-02 for why it is no
+# longer declared here.
+apiVersion: v1alpha1
+kind: UnattendedInstallConfig
+provisioning:
+  diskSelector:
+    match: disk.dev_path == "/dev/nvme0n1"
 ---
 apiVersion: v1alpha1
 kind: HostnameConfig
 auto: 'off'
 hostname: wn-03.cluster.internal
----
-apiVersion: v1alpha1
-kind: ResolverConfig
-nameservers:
-  - address: 192.168.10.1
-searchDomains:
-  disableDefault: false
 ---
 apiVersion: v1alpha1
 kind: LinkConfig

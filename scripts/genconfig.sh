@@ -39,14 +39,13 @@ for f in patches/all/*.yaml; do set -- "$@" --config-patch "@$f"; done
 for f in patches/controlplane/*.yaml; do set -- "$@" --config-patch-control-plane "@$f"; done
 for f in patches/worker/*.yaml; do set -- "$@" --config-patch-worker "@$f"; done
 
-# --install-disk "" drops the /dev/sda default so each node patch decides between
-# `disk` and `diskSelector`.
+# The generator's UnattendedInstallConfig carries the installer image and a /dev/sda
+# default; each node patch replaces the disk selector.
 talosctl gen config "$name" "$endpoint" \
   --with-secrets "$secrets" \
   --talos-version "$talos" \
   --kubernetes-version "$k8s" \
   --install-image "$installer:$talos" \
-  --install-disk "" \
   --with-docs=false --with-examples=false \
   --output-types controlplane,worker \
   --output "$tmp/base" --force \

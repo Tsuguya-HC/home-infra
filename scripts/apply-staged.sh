@@ -23,11 +23,19 @@ for host in $hosts; do
   node=${host%%.*}
   echo "===> $host ($ip)"
   echo "  staging..."
-  talosctl -n "$ip" apply-config --mode=staged -f "clusterconfig/$host.yaml" 2>&1 | status_lines | sed 's/^/  /'
+  # The node itself is the endpoint: the VIP moves (or is gone) while control planes reboot.
+  talosctl -e "$ip" -n "$ip" apply-config --mode=staged -f "clusterconfig/$host.yaml" 2>&1 | status_lines | sed 's/^/  /'
   echo "  rebooting..."
-  talosctl -n "$ip" reboot > /dev/null 2>&1
+  talosctl -e "$ip" -n "$ip" reboot > /dev/null 2>&1
   sleep 20
-  kubectl wait --for=condition=Ready "node/$node" --timeout=10m > /dev/null
-  for _ in $(seq 1 30); do talosctl -n "$ip" version --short > /dev/null 2>&1 && break; sleep 5; done
+  # Polled rather than `kubectl wait`: the API may be unreachable for a while when a
+  # control plane is down, and one failed request must not abort the rollout.
+  ready=
+  for _ in $(seq 1 60); do
+    [ "$(kubectl get node "$node" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' 2>/dev/null)" = True ] && { ready=1; break; }
+    sleep 10
+  done
+  [ -n "$ready" ] || { echo "  $node not Ready after 10 minutes" >&2; exit 1; }
+  for _ in $(seq 1 30); do talosctl -e "$ip" -n "$ip" version --short > /dev/null 2>&1 && break; sleep 5; done
   echo "  Ready"
 done

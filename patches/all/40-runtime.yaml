@@ -1,0 +1,33 @@
+# Host DNS forwarder and the resolvers every node uses.
+apiVersion: v1alpha1
+kind: ResolverConfig
+nameservers:
+  - address: 192.168.10.1
+hostDNS:
+  enabled: true
+  forwardKubeDNSToHost: true
+---
+# Harbor's in-cluster address: nodes pull from the registry before CoreDNS exists.
+apiVersion: v1alpha1
+kind: StaticHostConfig
+name: 10.107.133.63
+hostnames:
+  - registry.infra.tgy.io
+---
+apiVersion: v1alpha1
+kind: SysctlConfig
+params:
+  kernel.kptr_restrict: "1"
+---
+# Installer image and wipe policy; the disk to install to is chosen per node.
+apiVersion: v1alpha1
+kind: UnattendedInstallConfig
+provisioning:
+  wipe: false
+---
+# Workload isolation (sandboxd) is deliberately not enabled yet: it needs a reboot and a
+# check of Kata, Spin and the CSI drivers first. `talosctl gen config` adds this document
+# with workloadIsolation: true, so drop it until that is done.
+apiVersion: v1alpha1
+kind: SecurityProfileConfig
+$patch: delete

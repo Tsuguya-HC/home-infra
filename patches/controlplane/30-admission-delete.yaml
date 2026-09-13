@@ -1,0 +1,7 @@
+# The PodSecurity document `talosctl gen config` emits is replaced wholesale by the next
+# file. Merging into it would not do: an empty `namespaces: []` in a patch is treated as
+# "not set" and the default exemption list stays.
+apiVersion: v1alpha1
+kind: KubeAdmissionControlConfig
+name: PodSecurity
+$patch: delete

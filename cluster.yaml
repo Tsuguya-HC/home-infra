@@ -4,7 +4,7 @@ endpoint: https://192.168.10.229:6443
 # Version contract passed to `talosctl gen config --talos-version`. It pins what the
 # generator emits, independent of the talosctl binary doing the generating, and doubles
 # as the installer image tag. Bump it only to upgrade Talos.
-talosVersion: v1.13.9
+talosVersion: v1.14.0
 kubernetesVersion: v1.36.4
 # SecureBoot-signed custom build (talos-custom-build). Tag is talosVersion.
 installer: ghcr.io/tsuguya-hc/installer
