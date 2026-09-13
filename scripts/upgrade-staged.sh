@@ -12,15 +12,26 @@ INSTALLER_IMAGE="${INSTALLER_IMAGE:-$(yq -r .installer cluster.yaml):${TALOS_VER
 echo "Image: $INSTALLER_IMAGE"
 echo
 
-for ip in $(yq -r '.nodes[].ip' nodes.yaml); do
+# Optional short host names limit the rollout (e.g. `upgrade-staged.sh cp-11`), so a
+# rollout can be driven one node per invocation and resumed.
+if [ $# -gt 0 ]; then
+  ips=$(for n in "$@"; do yq -r ".nodes[] | select((.host | split(\".\") | .[0]) == \"$n\") | .ip" nodes.yaml; done)
+else
+  ips=$(yq -r '.nodes[].ip' nodes.yaml)
+fi
+
+for ip in $ips; do
   node="$(kubectl get node -o json | jq -r --arg ip "$ip" '.items[] | select(.status.addresses[]?.address==$ip) | .metadata.name')"
   echo "===> $node ($ip)"
 
   echo "  staging upgrade…"
+  # --no-reboot: install the new image without rebooting or draining. The default path
+  # cordons and evicts first, which PDBs on node-pinned StatefulSets block forever.
+  # (--stage is the deprecated legacy spelling of the same thing.)
   talosctl upgrade \
     --nodes="$ip" \
     --image="$INSTALLER_IMAGE" \
-    --stage
+    --no-reboot
 
   echo "  rebooting…"
   talosctl reboot --nodes="$ip"
