@@ -1,29 +1,25 @@
 #!/bin/bash
+# Copy rendered machine configs to pxe/config/<mac>.yaml for nodes that have a `mac`
+# in nodes.yaml (iPXE fetches the config by the booting NIC's MAC, hexhyp format).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_DIR="${SCRIPT_DIR}/../.."
 CONFIG_DIR="${SCRIPT_DIR}/../config"
-CLUSTERCONFIG_DIR="${SCRIPT_DIR}/../../clusterconfig"
-
-# MAC (hexhyp format) → config mapping
-declare -A MAC_MAP=(
-  ["58-47-ca-76-07-c4"]="home-cluster-cp-01.cluster.internal.yaml"
-  ["58-47-ca-76-09-95"]="home-cluster-cp-02.cluster.internal.yaml"
-  ["58-47-ca-76-08-d2"]="home-cluster-cp-03.cluster.internal.yaml"
-  ["7c-83-34-be-c0-b4"]="home-cluster-wn-01.cluster.internal.yaml"
-  ["68-1d-ef-36-c6-e3"]="home-cluster-wn-02.cluster.internal.yaml"
-  ["58-47-ca-73-ce-2a"]="home-cluster-wn-03.cluster.internal.yaml"
-)
 
 mkdir -p "$CONFIG_DIR"
 
-for mac in "${!MAC_MAP[@]}"; do
-  src="${CLUSTERCONFIG_DIR}/${MAC_MAP[$mac]}"
+while IFS=$'\t' read -r host mac; do
+  if [[ -z "$mac" ]]; then
+    echo "skip: $host has no mac in nodes.yaml" >&2
+    continue
+  fi
+  src="${REPO_DIR}/clusterconfig/${host}.yaml"
   dst="${CONFIG_DIR}/${mac}.yaml"
   if [[ -f "$src" ]]; then
     cp "$src" "$dst"
-    echo "Synced: ${MAC_MAP[$mac]} → ${mac}.yaml"
+    echo "Synced: ${host} → ${mac}.yaml"
   else
     echo "WARNING: $src not found" >&2
   fi
-done
+done < <(yq -r '.nodes[] | [.host, .mac // ""] | @tsv' "${REPO_DIR}/nodes.yaml")

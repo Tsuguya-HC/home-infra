@@ -41,8 +41,8 @@ jobs:
   # 変更ファイル種別を判定し、各 leaf を実行すべきかを outputs で返す。
   # merge-base 等のエッジケースを正しく扱うため dorny/paths-filter を使う。
   #
-  # aqua.yaml / aqua-checksums.json は lint-aqua だけの入力ではない。talhelper は
-  # そこでピンされているので、ピンが動いたら talconfig の検証も走らせる。
+  # aqua.yaml / aqua-checksums.json は lint-aqua だけの入力ではない。talosctl は
+  # そこでピンされているので、ピンが動いたら machine config の検証も走らせる。
   #
   # leaf 自身のワークフローファイルも各フィルタに入れてある（自己参照）。leaf の
   # 中身を変えた PR がその leaf を走らせないのでは検証にならない。
@@ -56,7 +56,7 @@ jobs:
       contents: read
       pull-requests: read # dorny/paths-filter が PR の変更ファイル一覧を API 取得するために必要
     outputs:
-      talconfig: ${{ steps.filter.outputs.talconfig }}
+      machineconfig: ${{ steps.filter.outputs.machineconfig }}
       workflows: ${{ steps.filter.outputs.workflows }}
       renovate: ${{ steps.filter.outputs.renovate }}
       aqua: ${{ steps.filter.outputs.aqua }}
@@ -69,11 +69,13 @@ jobs:
         id: filter
         with:
           filters: |
-            talconfig:
-              - 'talconfig.yaml'
-              - 'talsecret.sops.yaml'
+            machineconfig:
+              - 'cluster.yaml'
+              - 'nodes.yaml'
+              - 'patches/**'
+              - 'scripts/genconfig.sh'
               - '.yamllint*'
-              - '.github/workflows/_talconfig.yml'
+              - '.github/workflows/_machineconfig.yml'
               - 'aqua.yaml'
               - 'aqua-checksums.json'
             workflows:
@@ -86,16 +88,16 @@ jobs:
               - 'aqua-checksums.json'
               - 'aqua/**'
 
-  talconfig:
+  machineconfig:
     needs: detect
-    if: ${{ needs.detect.outputs.talconfig == 'true' }}
+    if: ${{ needs.detect.outputs.machineconfig == 'true' }}
     # zizmor 1.30 の self-repository は `./` を `$/` にしろと言う。従わないのは、
     # `$/` にすると actionlint が呼び出しを解決できなくなり、reusable workflow の
     # input 検証（必須の欠落・存在しない input 名）がまるごと消えるから（実測）。
     # audit の根拠である「前段ステップが clone したものを掴む」も、job レベルの
     # 呼び出しには当たらない — GitHub が同じ commit から解決し FS を見ない。
     # ignore は行単位。ステップの `uses: ./my-action` は今も検出される。
-    uses: ./.github/workflows/_talconfig.yml # zizmor: ignore[self-repository]
+    uses: ./.github/workflows/_machineconfig.yml # zizmor: ignore[self-repository]
     permissions:
       contents: read
 
@@ -140,7 +142,7 @@ jobs:
   # 緑」が必須チェックを満たしてしまう。
   gate:
     name: CI Gate
-    needs: [detect, talconfig, lint-workflows, lint-renovate, lint-aqua]
+    needs: [detect, machineconfig, lint-workflows, lint-renovate, lint-aqua]
     # `always()` ではなく `!cancelled()`。always() だと run をキャンセルしたとき
     # 全ての leaf が `cancelled` を返し、下の case をすり抜けて必須チェックが
     # 失敗として記録される。キャンセルされた run に下すべき判定は無い。

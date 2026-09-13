@@ -1,0 +1,34 @@
+# 物理ポートは3台とも同じ側に挿すこと (挿す位置が違うと enp1s0 になる)
+#
+# installDisk (/dev/sda 固定) は使わない: USB メモリが刺さっていると列挙順が入れ替わり
+# sda が USB を指すことがある (3台目で実際に発生)。SATA AHCI (0000:00:17.0) 配下を
+# busPath で指定すれば USB を確実に除外でき、SSD 交換や ata1/ata2 の差も吸収できる。
+machine:
+  install:
+    diskSelector:
+      busPath: /pci0000:00/0000:00:17.0/*
+---
+apiVersion: v1alpha1
+kind: HostnameConfig
+auto: 'off'
+hostname: cp-11.cluster.internal
+---
+apiVersion: v1alpha1
+kind: ResolverConfig
+nameservers:
+  - address: 192.168.10.1
+searchDomains:
+  disableDefault: false
+---
+apiVersion: v1alpha1
+kind: Layer2VIPConfig
+name: 192.168.10.229
+link: enp3s0
+---
+apiVersion: v1alpha1
+kind: LinkConfig
+name: enp3s0
+addresses:
+  - address: 192.168.10.231/24
+routes:
+  - gateway: 192.168.10.1

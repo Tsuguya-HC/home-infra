@@ -1,0 +1,38 @@
+cluster:
+  apiServer:
+    auditPolicy:
+      apiVersion: audit.k8s.io/v1
+      kind: Policy
+      rules:
+        - level: None
+          nonResourceURLs: ["/healthz*", "/livez*", "/readyz*", "/version", "/metrics", "/openapi/*"]
+        - level: None
+          users: ["system:kube-scheduler", "system:kube-controller-manager", "system:kube-proxy"]
+          verbs: ["get", "list", "watch"]
+        - level: None
+          userGroups: ["system:nodes"]
+          verbs: ["get", "update", "patch"]
+          resources:
+            - group: ""
+              resources: ["nodes/status"]
+            - group: "coordination.k8s.io"
+              resources: ["leases"]
+        - level: None
+          resources:
+            - group: ""
+              resources: ["serviceaccounts/token"]
+          verbs: ["create"]
+        - level: None
+          resources:
+            - group: ""
+              resources: ["events"]
+        - level: RequestResponse
+          resources:
+            - group: ""
+              resources: ["secrets"]
+          omitStages: ["RequestReceived"]
+        - level: Request
+          verbs: ["create", "update", "patch", "delete", "deletecollection"]
+          omitStages: ["RequestReceived"]
+        - level: Metadata
+          omitStages: ["RequestReceived"]

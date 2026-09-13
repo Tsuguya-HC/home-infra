@@ -1,12 +1,10 @@
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/aquaproj/aqua/main/json-schema/aqua-yaml.json
 #
-# CLI versions for the lint workflow. talhelper used to be installed with
-# `curl -fsSL https://i.jpillora.com/budimanjojo/talhelper! | sudo bash` — an
-# unpinned, unverified script from a third-party redirector, piped into a root
-# shell, in the job that validates the machine config for every node in the
-# cluster. aqua records a SHA256 for each binary in aqua-checksums.json and
-# refuses to install anything that does not match.
+# CLI versions for the lint workflow. aqua records a SHA256 for each binary in
+# aqua-checksums.json and refuses to install anything that does not match, so the
+# job that validates the machine config for every node in the cluster never runs an
+# unverified download.
 checksum:
   enabled: true
   # Fail rather than fall back to "just download it" when a checksum is missing.
@@ -21,4 +19,9 @@ registries:
     ref: v4.558.1 # renovate: depName=aquaproj/aqua-registry
 
 packages:
-  - name: budimanjojo/talhelper@v3.1.17
+  # talosctl renders and validates the machine configs. Kept on the cluster's Talos
+  # version: `validate --strict` turns deprecation warnings into errors, so a newer
+  # client failing here means the patches need the newer document format first.
+  - name: siderolabs/talos@v1.13.9
+  # yq reads cluster.yaml / nodes.yaml in scripts/genconfig.sh.
+  - name: mikefarah/yq@v4.53.6

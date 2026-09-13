@@ -1,8 +1,5 @@
-# Generated configs (recreate with: talhelper genconfig)
+# Rendered machine configs, one per node (recreate with: make genconfig)
 clusterconfig/
-
-# Plain-text secrets (should always be encrypted)
-talsecret.yaml
 
 # PXE boot assets (download with: make pxe-assets)
 pxe/assets/

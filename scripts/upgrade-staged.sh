@@ -6,29 +6,24 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-TALOSCONFIG="${TALOSCONFIG:-./clusterconfig/talosconfig}"
-TALOS_VERSION="$(awk '/^talosVersion:/ {print $2}' talconfig.yaml)"
-INSTALLER_IMAGE="${INSTALLER_IMAGE:-ghcr.io/tsuguya-hc/installer:${TALOS_VERSION}}"
+TALOS_VERSION="$(yq -r .talosVersion cluster.yaml)"
+INSTALLER_IMAGE="${INSTALLER_IMAGE:-$(yq -r .installer cluster.yaml):${TALOS_VERSION}}"
 
 echo "Image: $INSTALLER_IMAGE"
-echo "Talosconfig: $TALOSCONFIG"
 echo
 
-NODE_IPS="$(talhelper gencommand upgrade -c talconfig.yaml | grep -oE 'nodes=[0-9.]+' | cut -d= -f2)"
-
-for ip in $NODE_IPS; do
+for ip in $(yq -r '.nodes[].ip' nodes.yaml); do
   node="$(kubectl get node -o json | jq -r --arg ip "$ip" '.items[] | select(.status.addresses[]?.address==$ip) | .metadata.name')"
   echo "===> $node ($ip)"
 
   echo "  staging upgrade…"
   talosctl upgrade \
-    --talosconfig="$TALOSCONFIG" \
     --nodes="$ip" \
     --image="$INSTALLER_IMAGE" \
     --stage
 
   echo "  rebooting…"
-  talosctl reboot --talosconfig="$TALOSCONFIG" --nodes="$ip"
+  talosctl reboot --nodes="$ip"
 
   echo "  waiting for Ready…"
   kubectl wait --for=condition=Ready "node/$node" --timeout=10m

@@ -1,0 +1,31 @@
+# Node inventory. `host` names the per-node patch (patches/node/<host>.yaml) and the
+# rendered file (clusterconfig/<host>.yaml); `role` picks the base config; `ip` is where
+# apply/upgrade talk to; `mac` (hexhyp) is the iPXE config filename for PXE installs.
+#
+# Control planes: AOOSTAR/TianBei N1 Pro (N150, SATA M.2, enp3s0). Hostnames are the
+# generation number, IPs were inherited from the previous generation, so they don't line up.
+nodes:
+  - host: cp-11.cluster.internal
+    ip: 192.168.10.231
+    role: controlplane
+    mac: c8-ff-bf-05-ec-b7
+  - host: cp-12.cluster.internal
+    ip: 192.168.10.232
+    role: controlplane
+    mac: c8-ff-bf-05-ea-9b
+  - host: cp-13.cluster.internal
+    ip: 192.168.10.230
+    role: controlplane
+    mac: c8-ff-bf-05-e9-8f
+  - host: wn-01.cluster.internal
+    ip: 192.168.10.200
+    role: worker
+    mac: 7c-83-34-be-c0-b4
+  - host: wn-02.cluster.internal
+    ip: 192.168.10.201
+    role: worker
+    mac: 68-1d-ef-36-c6-e3
+  - host: wn-03.cluster.internal
+    ip: 192.168.10.202
+    role: worker
+    mac: 58-47-ca-73-ce-2a

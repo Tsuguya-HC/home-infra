@@ -1,13 +1,17 @@
-.PHONY: genconfig apply diff upgrade encrypt decrypt pxe-assets pxe-sync-configs
+.PHONY: genconfig diff apply upgrade pxe-assets pxe-sync-configs
 
+# Render clusterconfig/<host>.yaml for every node (secrets come from 1Password).
 genconfig:
-	talhelper genconfig -c talconfig.yaml
+	bash scripts/genconfig.sh
 
-diff:
-	talhelper genconfig -c talconfig.yaml --dry-run
+# Ask each node what would change. The node diffs against its running config, so this
+# is the only comparison that means anything (a diff against files on disk only tells
+# you what the generator changed since last time).
+diff: genconfig
+	bash scripts/apply.sh --dry-run
 
-apply:
-	talhelper gencommand apply | bash
+apply: genconfig
+	bash scripts/apply.sh
 
 upgrade:
 	bash scripts/upgrade-staged.sh
