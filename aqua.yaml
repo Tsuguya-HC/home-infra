@@ -22,6 +22,6 @@ packages:
   # talosctl renders and validates the machine configs. Kept on the cluster's Talos
   # version: `validate --strict` turns deprecation warnings into errors, so a newer
   # client failing here means the patches need the newer document format first.
-  - name: siderolabs/talos@v1.13.9
+  - name: siderolabs/talos@v1.14.0
   # yq reads cluster.yaml / nodes.yaml in scripts/genconfig.sh.
   - name: mikefarah/yq@v4.53.6

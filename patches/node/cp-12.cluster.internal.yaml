@@ -1,20 +1,14 @@
-# See cp-11 for the busPath rationale.
-machine:
-  install:
-    diskSelector:
-      busPath: /pci0000:00/0000:00:17.0/*
+# See cp-11 for the bus path rationale.
+apiVersion: v1alpha1
+kind: UnattendedInstallConfig
+provisioning:
+  diskSelector:
+    match: disk.bus_path.startsWith("/pci0000:00/0000:00:17.0/")
 ---
 apiVersion: v1alpha1
 kind: HostnameConfig
 auto: 'off'
 hostname: cp-12.cluster.internal
----
-apiVersion: v1alpha1
-kind: ResolverConfig
-nameservers:
-  - address: 192.168.10.1
-searchDomains:
-  disableDefault: false
 ---
 apiVersion: v1alpha1
 kind: Layer2VIPConfig
