@@ -1,15 +1,21 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # Render one machine config per node into clusterconfig/<host>.yaml.
 #
 #   talosctl gen config   cluster.yaml + secrets bundle + patches/all + patches/<role>
 #                         -> role base configs (controlplane.yaml, worker.yaml)
 #   machineconfig patch   role base + patches/node/<host>.yaml -> clusterconfig/<host>.yaml
-#   talosctl validate     every rendered file, warnings are errors
+#   talosctl validate     every rendered file
+#
+# POSIX sh on purpose: the same script runs on the workstation, in CI and inside the
+# cluster's pxe-sync workflow (alpine, no bash). Needs talosctl and yq on PATH.
 #
 # The secrets bundle (`talosctl gen secrets` format) lives in 1Password, never in git.
-# TALOS_SECRETS=<path> bypasses 1Password (CI renders with a throwaway bundle: the
-# secrets don't change what validate checks).
-set -euo pipefail
+#   TALOS_SECRETS=<path>          bypass 1Password (CI renders with a throwaway bundle:
+#                                 the secrets don't change what validate checks)
+#   TALOS_VALIDATE_ARGS="..."     validate flags, default --strict (warnings are errors).
+#                                 A talosctl newer than cluster.yaml's talosVersion may
+#                                 warn about fields the contract still uses; pass "" there.
+set -eu
 umask 077
 cd "$(dirname "$0")/.."
 
@@ -28,10 +34,10 @@ if [ -z "$secrets" ]; then
   secrets=$tmp/secrets.yaml
 fi
 
-patches=()
-for f in patches/all/*.yaml; do patches+=(--config-patch "@$f"); done
-for f in patches/controlplane/*.yaml; do patches+=(--config-patch-control-plane "@$f"); done
-for f in patches/worker/*.yaml; do patches+=(--config-patch-worker "@$f"); done
+set --
+for f in patches/all/*.yaml; do set -- "$@" --config-patch "@$f"; done
+for f in patches/controlplane/*.yaml; do set -- "$@" --config-patch-control-plane "@$f"; done
+for f in patches/worker/*.yaml; do set -- "$@" --config-patch-worker "@$f"; done
 
 # --install-disk "" drops the /dev/sda default so each node patch decides between
 # `disk` and `diskSelector`.
@@ -44,12 +50,14 @@ talosctl gen config "$name" "$endpoint" \
   --with-docs=false --with-examples=false \
   --output-types controlplane,worker \
   --output "$tmp/base" --force \
-  "${patches[@]}" > /dev/null
+  "$@" > /dev/null
 
 mkdir -p clusterconfig
-while IFS=$'\t' read -r host role; do
+yq -r '.nodes[] | .host + " " + .role' nodes.yaml > "$tmp/nodes"
+while read -r host role; do
   talosctl machineconfig patch "$tmp/base/$role.yaml" \
     -p "@patches/node/$host.yaml" \
     -o "clusterconfig/$host.yaml"
-  talosctl validate -c "clusterconfig/$host.yaml" -m metal --strict
-done < <(yq -r '.nodes[] | [.host, .role] | @tsv' nodes.yaml)
+  # shellcheck disable=SC2086 # TALOS_VALIDATE_ARGS is a flag list by design
+  talosctl validate -c "clusterconfig/$host.yaml" -m metal ${TALOS_VALIDATE_ARGS---strict}
+done < "$tmp/nodes"
