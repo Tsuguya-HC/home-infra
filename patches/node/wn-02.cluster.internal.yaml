@@ -1,0 +1,29 @@
+# NiPoGi AK2Plus (N100), SATA, enp1s0
+machine:
+  install:
+    disk: /dev/sda
+  files:
+    - content: ""
+      path: /var/mnt/kanidm/.keep
+      op: create
+      permissions: 0o644
+---
+apiVersion: v1alpha1
+kind: HostnameConfig
+auto: 'off'
+hostname: wn-02.cluster.internal
+---
+apiVersion: v1alpha1
+kind: ResolverConfig
+nameservers:
+  - address: 192.168.10.1
+searchDomains:
+  disableDefault: false
+---
+apiVersion: v1alpha1
+kind: LinkConfig
+name: enp1s0
+addresses:
+  - address: 192.168.10.201/24
+routes:
+  - gateway: 192.168.10.1

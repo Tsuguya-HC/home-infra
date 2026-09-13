@@ -1,8 +1,13 @@
 {
   "checksums": [
     {
-      "id": "github_release/github.com/budimanjojo/talhelper/v3.1.17/talhelper_linux_amd64.tar.gz",
-      "checksum": "DFF9162569004637B6A842C4020D909B0FFBC7FBBE2FCA23A754708DB95BE204",
+      "id": "github_release/github.com/mikefarah/yq/v4.53.6/yq_linux_amd64",
+      "checksum": "508F4EE34C6D093D136FF3C1B36DB4105E686C3D68D435C064448BA16E2616D528EFAFB2CB0A1890B7724890373A226A38B7DA27E6796396EE759BED39A8C671",
+      "algorithm": "sha512"
+    },
+    {
+      "id": "github_release/github.com/siderolabs/talos/v1.13.9/talosctl-linux-amd64",
+      "checksum": "7E1D4B7D5846964BDCF63A794E3C8161BB6EF2983D5ACE58EA5322F3BF32A27E",
       "algorithm": "sha256"
     },
     {

@@ -1,0 +1,33 @@
+# Applied to every node.
+cluster:
+  network:
+    cni:
+      name: none  # Cilium is installed by ArgoCD (home-cluster)
+  proxy:
+    disabled: true  # Cilium kube-proxy replacement
+  discovery:
+    registries:
+      kubernetes:
+        disabled: true
+machine:
+  install:
+    wipe: false
+  features:
+    diskQuotaSupport: true
+    kubePrism:
+      enabled: true
+      port: 7445
+    hostDNS:
+      enabled: true
+      forwardKubeDNSToHost: true
+  network:
+    extraHostEntries:
+      - ip: 10.107.133.63
+        aliases:
+          - registry.infra.tgy.io
+  sysctls:
+    kernel.kptr_restrict: "1"
+  kubelet:
+    defaultRuntimeSeccompProfileEnabled: true
+    disableManifestsDirectory: true
+  registries: {}

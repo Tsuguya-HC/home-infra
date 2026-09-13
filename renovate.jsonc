@@ -24,10 +24,10 @@
 
   "customManagers": [
     {
-      // talhelper's own keys — no manager reads talconfig.yaml, so both the Talos
+      // cluster.yaml is our own format — no manager reads it, so both the Talos
       // and Kubernetes versions would be unmaintained pins without these two.
       "customType": "regex",
-      "managerFilePatterns": ["/talconfig\\.yaml$/"],
+      "managerFilePatterns": ["/cluster\\.yaml$/"],
       "matchStrings": [
         "talosVersion:\\s*(?<currentValue>v[\\d.]+)"
       ],
@@ -39,7 +39,7 @@
     },
     {
       "customType": "regex",
-      "managerFilePatterns": ["/talconfig\\.yaml$/"],
+      "managerFilePatterns": ["/cluster\\.yaml$/"],
       "matchStrings": [
         "kubernetesVersion:\\s*(?<currentValue>v[\\d.]+)"
       ],
@@ -67,8 +67,9 @@
     {
       "description": [
         "The regex-managed deps live in lines that have nowhere to hold a digest",
-        "(talconfig's `talosVersion: vX.Y.Z` feeds talhelper, which takes a bare",
-        "version). docker:pinDigests still proposes a pinDigest update for them,",
+        "(cluster.yaml's `talosVersion: vX.Y.Z` is both the `--talos-version`",
+        "contract and the installer tag). docker:pinDigests still proposes a",
+        "pinDigest update for them,",
         "the write fails, and the grouped renovate/pin-dependencies branch dies",
         "with `Error updating branch: update failure`, taking the docker-compose",
         "pins down with it."
