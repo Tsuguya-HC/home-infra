@@ -12,8 +12,8 @@
 | `cluster.id` / `cluster.secret`（discovery） | 同上 | 30 分ほど `talosctl get members` が欠ける |
 | `certs.k8saggregator` | 同上 | apiserver 再起動、集約 API（metrics-server）が揃うまで数分ブレる（1.13 は即時切替） |
 | `certs.k8sserviceaccount` | 同上 | **全 SA トークン無効**。直後に `restart-workloads.sh`（1.13 は即時切替、1.14 は `accepted.publicKeys` で段階化できる） |
-| `secrets.secretboxencryptionsecret` | 1.14 の `KubeEtcdEncryptionConfig` で 7 段階 | 1.13 は鍵 1 本しか書けず無損失で回せない。スクリプトは拒否する |
-| `certs.etcd`（etcd CA） | 手動、graceful な経路なし（上流 #8808） | CP 3 台の `cluster.etcd.ca` を続けて差し替え |
+| `secrets.secretboxencryptionsecret` | `scripts/rotate-secretbox.sh 1` → `2` → `3` → `4` | `KubeEtcdEncryptionConfig` の 2 鍵ダンス（1.14 以降）。各段で apiserver が 1 台ずつ再起動、2 と 3 で全 Secret を書き直す |
+| `certs.etcd`（etcd CA） | `scripts/rotate-bundle.sh certs.etcd` | graceful な経路なし（上流 #8808）。staged で CP を 1 台ずつ再起動。1 台目は 2 台目が戻るまで孤立、2 台目の再起動中は API が落ちる（数分） |
 
 ## 全部回すとき（今日のような漏洩後）
 
@@ -25,11 +25,21 @@ scripts/rotate-ca.sh talos --apply         # talosconfig を配り直し、バ�
 scripts/rotate-bundle.sh trustdinfo.token secrets.bootstraptoken cluster.id cluster.secret \
   certs.k8saggregator certs.k8sserviceaccount
 scripts/restart-workloads.sh               # CA と SA 鍵が変わったので全部巻き直す
+scripts/rotate-secretbox.sh 1 && scripts/rotate-secretbox.sh 2 \
+  && scripts/rotate-secretbox.sh 3 && scripts/rotate-secretbox.sh 4
+scripts/rotate-bundle.sh certs.etcd        # CP が 1 台ずつ再起動、API が数分落ちる
 make diff                                  # 全台 No changes
 scripts/secrets-sync.sh                    # 稼働 CP から再構成したバンドル = 1Password
 ```
 
-secretbox と etcd CA は残る。secretbox は 1.14 に上げてから。
+### etcd CA は live apply では回らない（2026-09-13 実測）
+
+`cluster.etcd.ca` を再起動なしで当てると Talos は etcd の証明書をディスク上で差し替えるが、
+etcd は葉証明書だけ握り直して CA プールは起動時のまま。結果、3 メンバーが互いの新しい証明書を
+`certificate signed by unknown authority` で拒否し（既存の raft ストリームだけで quorum が
+持つ）、kube-apiserver も新しい etcd 接続を張れなくなる（既存接続だけで生きている）。
+`talosctl service etcd restart` は API で許可されていない。復旧は CP の再起動 1 台ずつ
+（cp-11 → cp-12 → cp-13 で API 断は約 2 分）。スクリプトはこの順を最初から踏む。
 
 ## 仕組み
 
