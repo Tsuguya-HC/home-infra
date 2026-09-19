@@ -16,7 +16,7 @@ checksum:
 
 registries:
   - type: standard
-    ref: v4.559.0 # renovate: depName=aquaproj/aqua-registry
+    ref: v4.563.0 # renovate: depName=aquaproj/aqua-registry
 
 packages:
   # talosctl renders and validates the machine configs. Kept on the cluster's Talos
