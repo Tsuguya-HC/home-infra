@@ -5,6 +5,21 @@
   // report CI results from a workflow that no longer exists there.
   "rebaseWhen": "behind-base-branch",
 
+  // Commits our own automation makes on a Renovate branch must not read as human
+  // edits: Renovate stops updating a branch it thinks someone took over, and the
+  // PR strands with no error anywhere. It skips its own commits by comparing the
+  // git author against the App it authenticates as, so anything committed by a
+  // *different* App of ours has to be listed here -- including commits Renovate
+  // itself made while running as an earlier identity, which stay in the branch's
+  // range and keep the branch marked modified forever.
+  //
+  // The option is gitIgnoredAuthors, not ignoredAuthors: the latter validates as
+  // an unknown key and is dropped in silence.
+  "gitIgnoredAuthors": [
+    // The all-purpose tgy-cluster-bot App. aqua-checksum commits as this, and
+    // Renovate did too before it moved onto an App of its own.
+    "265309552+tsuguya-home-cluster[bot]@users.noreply.github.com"
+  ],
 
   // The aqua preset is pinned rather than floating: it owns which files the aqua
   // manager reads, and a preset-side change would silently re-scope this repo.
