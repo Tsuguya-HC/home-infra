@@ -33,16 +33,22 @@ for ip in $ips; do
     --image="$INSTALLER_IMAGE" \
     --no-reboot
 
+  # Cordon without evicting. Otherwise controllers keep placing pods on the node while
+  # it shuts down, and each one is rejected and left behind as a Failed pod.
+  echo "  cordoning…"
+  kubectl cordon "$node"
+  # Don't leave the node cordoned if reboot or the Ready wait below fails.
+  trap 'kubectl uncordon "$node" || echo "  WARNING: $node is still cordoned; uncordon it by hand" >&2' EXIT
+
   echo "  rebooting…"
   talosctl reboot --nodes="$ip"
 
   echo "  waiting for Ready…"
   kubectl wait --for=condition=Ready "node/$node" --timeout=10m
 
-  if [ "$(kubectl get node "$node" -o jsonpath='{.spec.unschedulable}')" = "true" ]; then
-    echo "  uncordoning…"
-    kubectl uncordon "$node"
-  fi
+  echo "  uncordoning…"
+  kubectl uncordon "$node"
+  trap - EXIT
   echo
 done
 
