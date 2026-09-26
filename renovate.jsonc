@@ -34,7 +34,8 @@
   ],
 
   // Baseline soak. Nothing here reaches the cluster without `make apply`, but a
-  // Talos or Kubernetes bump is a node reboot, so it soaks like everything else.
+  // Kubernetes bump is a node reboot, so it soaks like everything else. Talos
+  // soaks upstream of here, in talos-custom-build (see the first-party rule).
   "minimumReleaseAge": "3 days",
 
   "customManagers": [
@@ -98,9 +99,12 @@
         "else to notice a poisoned release before we take it; there is no someone",
         "else here — we wrote it, reviewed it and merged it. Waiting three days on",
         "our own reusable workflow only delays fixes to the thing that gates every",
-        "other check."
+        "other check.",
+        "Same logic for the whole ghcr.io/tsuguya-hc namespace: every package in it",
+        "is something we built ourselves. Content that came from outside is already",
+        "soaked by whichever repo built the image."
       ],
-      "matchPackageNames": ["Tsuguya-HC/**"],
+      "matchPackageNames": ["Tsuguya-HC/**", "ghcr.io/tsuguya-hc/**"],
       "minimumReleaseAge": "0"
     },
     {
