@@ -5,3 +5,7 @@ port: 7445
 apiVersion: v1alpha1
 kind: KubeletConfig
 defaultRuntimeSeccompProfileEnabled: true
+config:
+  # OOM で殺すのはコンテナ内の最大のプロセスだけにする（既定は memory.oom.group でコンテナごと）。
+  # implement flow のエージェントが回すテストが暴走しても、claude が巻き添えにならず報告まで書ける。
+  singleProcessOOMKill: true
