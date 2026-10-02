@@ -24,4 +24,4 @@ packages:
   # client failing here means the patches need the newer document format first.
   - name: siderolabs/talos@v1.14.1
   # yq reads cluster.yaml / nodes.yaml in scripts/genconfig.sh.
-  - name: mikefarah/yq@v4.53.6
+  - name: mikefarah/yq@v4.54.1
