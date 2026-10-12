@@ -1,6 +1,0 @@
-# Pods with hostUsers: false fail at sandbox creation unless the runtime can create user
-# namespaces on the node (Talos defaults to 0). Opened on workers only.
-apiVersion: v1alpha1
-kind: SysctlConfig
-params:
-  user.max_user_namespaces: "11255"
