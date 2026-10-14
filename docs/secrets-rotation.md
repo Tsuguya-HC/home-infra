@@ -13,7 +13,7 @@
 | `certs.k8saggregator` | 同上 | apiserver 再起動、集約 API（metrics-server）が揃うまで数分ブレる（1.13 は即時切替） |
 | `certs.k8sserviceaccount` | 同上 | **全 SA トークン無効**。直後に `restart-workloads.sh`（1.13 は即時切替、1.14 は `accepted.publicKeys` で段階化できる） |
 | `secrets.secretboxencryptionsecret` | `scripts/rotate-secretbox.sh 1` → `2` → `3` → `4` | `KubeEtcdEncryptionConfig` の 2 鍵ダンス（1.14 以降）。各段で apiserver が 1 台ずつ再起動、2 と 3 で全 Secret を書き直す |
-| `certs.etcd`（etcd CA） | `scripts/rotate-bundle.sh certs.etcd` | graceful な経路なし（上流 #8808）。staged で CP を 1 台ずつ再起動。1 台目は 2 台目が戻るまで孤立、2 台目の再起動中は API が落ちる（数分） |
+| `certs.etcd`（etcd CA） | `scripts/rotate-bundle.sh certs.etcd` | graceful な経路なし（上流 #8808）。staged で CP を 1 台ずつ再起動。1 台目は 2 台目が戻るまで孤立（etcd の leader 待ちはこの台だけ外す、`ETCD_ISOLATED`）、2 台目の再起動中は API が落ちる（数分） |
 
 ## 全部回すとき（今日のような漏洩後）
 

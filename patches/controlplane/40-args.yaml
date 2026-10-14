@@ -1,8 +1,15 @@
-# Metrics endpoints bound to all interfaces for kube-prometheus-stack.
 cluster:
   etcd:
     extraArgs:
+      # Metrics endpoints bound to all interfaces for kube-prometheus-stack.
       listen-metrics-urls: http://0.0.0.0:2381
+      # The CP SATA SSDs (ASint AS606) stall fdatasync for 3.7-4.5s every hour or so at idle.
+      # A stalled leader stops sending heartbeats, so the 1s default election timeout turned
+      # each stall into a leader change. 6s outlasts the stall. Cost: a real leader loss takes
+      # up to 12s to elect (randomized in [T, 2T)), long enough for kube-controller-manager and
+      # kube-scheduler (leader-elect renew-deadline 10s) to restart.
+      heartbeat-interval: "500"
+      election-timeout: "6000"
 ---
 apiVersion: v1alpha1
 kind: KubeControllerManagerConfig

@@ -28,9 +28,10 @@
 #                                               every member rejecting its peers and every
 #                                               kube-apiserver unable to open new etcd
 #                                               connections (2026-09-13). Staged + reboot,
-#                                               control planes only: the rebooted member is
-#                                               alone until the second one follows, and the
-#                                               API is away while the second one reboots
+#                                               control planes only, rotated alone (refused with
+#                                               other keys): the rebooted member is alone until
+#                                               the second one follows, and the API is away
+#                                               while the second one reboots
 #
 # talosctl prints the config diff (secrets included) on stderr when it applies. Nothing
 # from talosctl reaches the terminal except a short allowlist of status lines.
@@ -53,6 +54,9 @@ for k in "$@"; do
     *) echo "unknown bundle key: $k" >&2; exit 2 ;;
   esac
 done
+if [ "$etcd" = true ] && [ $# -gt 1 ]; then
+  echo "refusing: certs.etcd must be rotated alone" >&2; exit 2
+fi
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
@@ -73,10 +77,12 @@ echo "1Password document updated"
 make -s genconfig > /dev/null 2>&1
 echo "machine configs rendered"
 
-if [ "$etcd" = true ] && [ $# -eq 1 ]; then
+if [ "$etcd" = true ]; then
   # Worker configs do not carry cluster.etcd.ca; no reason to reboot them.
-  # shellcheck disable=SC2046 # host names, no spaces
-  bash scripts/apply-staged.sh $(yq -r '.nodes[] | select(.role == "controlplane") | .host | split(".") | .[0]' nodes.yaml)
+  cps=$(yq -r '.nodes[] | select(.role == "controlplane") | .host | split(".") | .[0]' nodes.yaml)
+  # The first one is cut off from the others until the second is back; skip its etcd wait.
+  # shellcheck disable=SC2086 # host names, no spaces
+  ETCD_ISOLATED=$(head -n1 <<< "$cps") bash scripts/apply-staged.sh $cps
 else
   bash scripts/apply-staged.sh
 fi
