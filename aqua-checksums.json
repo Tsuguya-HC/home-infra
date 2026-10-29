@@ -6,8 +6,8 @@
       "algorithm": "sha512"
     },
     {
-      "id": "github_release/github.com/siderolabs/talos/v1.14.4/talosctl-linux-amd64",
-      "checksum": "0A69E3F9B682C5CD844B78DAE305F6056CEB86C5FCC6913DCEA78C527ED97CEE",
+      "id": "github_release/github.com/siderolabs/talos/v1.14.5/talosctl-linux-amd64",
+      "checksum": "FF432B68986709E6B69C563A08A2CED4232D5196B0DCCD6D2E783E9D714D7D7D",
       "algorithm": "sha256"
     },
     {
